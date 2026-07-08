@@ -6,6 +6,10 @@ use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 
+/**
+ * Membuat 3 akun demo, satu untuk tiap role (owner, admin, kasir),
+ * supaya RBAC bisa langsung dicoba/didemokan.
+ */
 class UserSeeder extends Seeder
 {
     public function run(): void
@@ -14,6 +18,8 @@ class UserSeeder extends Seeder
             'name' => 'Dewi Wijaya',
             'username' => 'owner',
             'email' => 'owner@cafecns.id',
+            // Hash::make() mengubah password teks biasa jadi bentuk terenkripsi
+            // sebelum disimpan -> password asli tidak pernah tersimpan di database.
             'password' => Hash::make('owner2026'),
             'role' => 'owner',
             'avatar_initial' => 'DW',

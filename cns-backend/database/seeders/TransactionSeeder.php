@@ -10,6 +10,11 @@ use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Carbon;
 
+/**
+ * Mengisi riwayat transaksi contoh: data 6 bulan terakhir (dipakai untuk
+ * grafik di Laporan & Analitik) ditambah beberapa transaksi "hari ini"
+ * (dipakai untuk demo Dashboard & Transaksi/POS).
+ */
 class TransactionSeeder extends Seeder
 {
     public function run(): void

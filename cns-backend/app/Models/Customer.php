@@ -4,6 +4,9 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
+/**
+ * Model untuk tabel "customers" (Manajemen Pelanggan).
+ */
 class Customer extends Model
 {
     protected $fillable = [
@@ -20,6 +23,11 @@ class Customer extends Model
         ];
     }
 
+    /**
+     * RELASI one-to-many: satu pelanggan bisa punya banyak transaksi.
+     * Setelah ini, kita bisa menulis $customer->transactions untuk
+     * mengambil semua transaksi milik pelanggan tsb tanpa menulis query manual.
+     */
     public function transactions()
     {
         return $this->hasMany(Transaction::class);

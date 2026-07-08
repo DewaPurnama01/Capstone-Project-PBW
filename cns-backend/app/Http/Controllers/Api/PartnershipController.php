@@ -9,16 +9,23 @@ use App\Models\PartnerOffer;
 use App\Models\PurchaseOrder;
 use App\Models\RestockRequest;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use PHPOpenSourceSaver\JWTAuth\Facades\JWTAuth;
 
+/**
+ * Modul Portal Kemitraan Petani (laporan 4.6). Alur pengadaan biji kopi:
+ *
+ *   1. createRequest()  -> Owner/Admin membuat draf permintaan
+ *   2. broadcast()       -> permintaan disiarkan ke petani mitra
+ *   3. submitOffer()     -> tiap petani yang menawar dicatat di sini
+ *   4. selectOffer()     -> tawaran terbaik dipilih, PO otomatis dibuat
+ *
+ * Setelah PO dibuat, proses selanjutnya (pengiriman & Quality Control)
+ * ditangani oleh PurchaseOrderController.
+ */
 class PartnershipController extends Controller
 {
-    /**
-     * Ringkasan Portal Kemitraan: status stok kopi kritis, daftar request aktif,
-     * dan daftar petani mitra beserta metrik performa.
-     */
+    /** Ringkasan halaman Portal Kemitraan: stok kopi, daftar request, daftar petani */
     public function index()
     {
         $coffeeBean = InventoryItem::where('is_coffee_bean', true)->first();
@@ -33,8 +40,10 @@ class PartnershipController extends Controller
 
         $partners = Partner::orderByDesc('quality_score')->get();
 
-        $relatedCodes = $activeRequests->pluck('code')->merge($history->pluck('code'));
-        $purchaseOrders = PurchaseOrder::whereIn('reference_code', $relatedCodes)
+        // Ambil PO yang terkait dengan request di atas, supaya frontend bisa
+        // tahu sudah sampai tahap mana (dikirim/selesai/dsb) untuk tiap request.
+        $kodeRequestTerkait = $activeRequests->pluck('code')->merge($history->pluck('code'));
+        $purchaseOrders = PurchaseOrder::whereIn('reference_code', $kodeRequestTerkait)
             ->get(['id', 'code', 'reference_code', 'delivery_status', 'payment_status']);
 
         return response()->json([
@@ -52,9 +61,7 @@ class PartnershipController extends Controller
         return response()->json(['data' => Partner::orderByDesc('quality_score')->get()]);
     }
 
-    /**
-     * Owner/Admin membuat draf permintaan lalu menyiarkan (broadcast) ke seluruh petani aktif.
-     */
+    /** Langkah 1: buat draf permintaan restock biji kopi */
     public function createRequest(Request $request)
     {
         $validator = Validator::make($request->all(), [
@@ -68,10 +75,10 @@ class PartnershipController extends Controller
             return response()->json(['message' => 'Data permintaan tidak valid.', 'errors' => $validator->errors()], 422);
         }
 
-        $count = RestockRequest::whereYear('created_at', now()->year)->count() + 1;
-        $code = 'REQ-' . now()->format('Y') . '-' . str_pad($count, 3, '0', STR_PAD_LEFT);
+        $urutan = RestockRequest::whereYear('created_at', now()->year)->count() + 1;
+        $code = 'REQ-' . now()->format('Y') . '-' . str_pad($urutan, 3, '0', STR_PAD_LEFT);
 
-        $req = RestockRequest::create([
+        $restockRequest = RestockRequest::create([
             'code' => $code,
             'inventory_item_id' => $request->inventory_item_id,
             'specification' => $request->specification,
@@ -81,26 +88,24 @@ class PartnershipController extends Controller
             'created_by' => JWTAuth::user()?->id,
         ]);
 
-        return response()->json(['message' => 'Draf permintaan dibuat.', 'data' => $req], 201);
+        return response()->json(['message' => 'Draf permintaan dibuat.', 'data' => $restockRequest], 201);
     }
 
-    /**
-     * Menyiarkan (broadcast) permintaan ke seluruh petani aktif.
-     */
+    /** Langkah 2: siarkan draf ke seluruh petani aktif (tombol manual di frontend) */
     public function broadcast(RestockRequest $restockRequest)
     {
         $restockRequest->update(['status' => 'disiarkan', 'broadcasted_at' => now()]);
 
-        $activePartnersCount = Partner::where('is_active', true)->count();
-
         return response()->json([
-            'message' => "Permintaan berhasil disiarkan ke {$activePartnersCount} petani mitra aktif.",
+            'message' => 'Permintaan berhasil disiarkan ke petani mitra aktif.',
             'data' => $restockRequest->fresh(),
         ]);
     }
 
     /**
-     * Petani memberi penawaran (disimulasikan lewat dashboard internal untuk keperluan demo).
+     * Langkah 3: catat tawaran dari seorang petani. Di aplikasi nyata ini bisa
+     * datang dari portal/WhatsApp petani; di sini Owner/Admin yang mencatat
+     * secara manual lewat form "Input Penawaran Petani".
      */
     public function submitOffer(Request $request, RestockRequest $restockRequest)
     {
@@ -127,42 +132,43 @@ class PartnershipController extends Controller
         return response()->json(['message' => 'Penawaran diterima.', 'data' => $offer], 201);
     }
 
-    /**
-     * Memilih penawaran terbaik -> otomatis membuat Purchase Order.
-     */
+    /** Langkah 4: pilih satu tawaran terbaik -> otomatis membuat Purchase Order */
     public function selectOffer(Request $request, PartnerOffer $offer)
     {
-        $result = DB::transaction(function () use ($offer) {
-            $offer->update(['status' => 'dipilih']);
-            $restockRequest = $offer->restockRequest;
+        $offer->update(['status' => 'dipilih']);
 
-            PartnerOffer::where('restock_request_id', $restockRequest->id)
-                ->where('id', '!=', $offer->id)
-                ->update(['status' => 'ditolak']);
+        // Tawaran lain untuk request yang sama otomatis ditandai "ditolak"
+        PartnerOffer::where('restock_request_id', $offer->restock_request_id)
+            ->where('id', '!=', $offer->id)
+            ->update(['status' => 'ditolak']);
 
-            $count = PurchaseOrder::whereYear('created_at', now()->year)->count() + 1;
-            $code = 'PO-' . now()->format('Y') . '-' . str_pad($count, 3, '0', STR_PAD_LEFT);
+        $restockRequest = $offer->restockRequest;
+        $purchaseOrder = $this->buatPurchaseOrderDariOffer($restockRequest, $offer);
 
-            $po = PurchaseOrder::create([
-                'code' => $code,
-                'reference_code' => $restockRequest->code,
-                'partner_id' => $offer->partner_id,
-                'partner_offer_id' => $offer->id,
-                'inventory_item_id' => $restockRequest->inventory_item_id,
-                'qty' => $restockRequest->qty_needed,
-                'unit' => $restockRequest->unit,
-                'unit_price' => $offer->price_per_unit,
-                'total' => $offer->price_per_unit * $restockRequest->qty_needed,
-                'delivery_status' => 'dikirim',
-                'payment_status' => 'belum_bayar',
-                'estimated_delivery' => now()->addDays($offer->eta_days),
-            ]);
+        $restockRequest->update(['status' => 'po_dibuat']);
 
-            $restockRequest->update(['status' => 'po_dibuat']);
+        return response()->json(['message' => 'Purchase Order otomatis dibuat.', 'data' => $purchaseOrder], 201);
+    }
 
-            return $po;
-        });
+    // Helper kecil supaya method selectOffer() di atas tetap ringkas dan mudah dibaca
+    private function buatPurchaseOrderDariOffer(RestockRequest $restockRequest, PartnerOffer $offer): PurchaseOrder
+    {
+        $urutan = PurchaseOrder::whereYear('created_at', now()->year)->count() + 1;
+        $code = 'PO-' . now()->format('Y') . '-' . str_pad($urutan, 3, '0', STR_PAD_LEFT);
 
-        return response()->json(['message' => 'Purchase Order otomatis dibuat.', 'data' => $result], 201);
+        return PurchaseOrder::create([
+            'code' => $code,
+            'reference_code' => $restockRequest->code,
+            'partner_id' => $offer->partner_id,
+            'partner_offer_id' => $offer->id,
+            'inventory_item_id' => $restockRequest->inventory_item_id,
+            'qty' => $restockRequest->qty_needed,
+            'unit' => $restockRequest->unit,
+            'unit_price' => $offer->price_per_unit,
+            'total' => $offer->price_per_unit * $restockRequest->qty_needed,
+            'delivery_status' => 'dikirim',
+            'payment_status' => 'belum_bayar',
+            'estimated_delivery' => now()->addDays($offer->eta_days),
+        ]);
     }
 }

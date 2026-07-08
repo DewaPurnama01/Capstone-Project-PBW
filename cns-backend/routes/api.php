@@ -10,13 +10,26 @@ use App\Http\Controllers\Api\ReportController;
 use App\Http\Controllers\Api\TransactionController;
 use Illuminate\Support\Facades\Route;
 
+/**
+ * ROUTING = pemetaan "alamat URL + method HTTP" ke fungsi controller
+ * yang akan menangani request tsb. File ini adalah "peta" seluruh API.
+ *
+ * Route::middleware('jwt.auth') membungkus semua route di dalamnya supaya
+ * WAJIB mengirim token JWT yang valid (lihat app/Http/Middleware/JwtMiddleware.php).
+ *
+ * Route::middleware('role:owner,admin') di dalamnya lagi membatasi lebih
+ * jauh: dari semua user yang sudah login, hanya role tertentu yang boleh
+ * mengakses modul itu — inilah penerapan RBAC (Role-Based Access Control)
+ * sesuai tabel akses di laporan bagian 2.
+ */
+
 // ================================================================
-// AUTH (publik)
+// AUTH (tidak perlu login untuk mengakses ini)
 // ================================================================
 Route::post('/auth/login', [AuthController::class, 'login']);
 
 // ================================================================
-// PROTECTED (butuh JWT valid)
+// SEMUA ROUTE DI BAWAH INI WAJIB LOGIN (token JWT valid)
 // ================================================================
 Route::middleware('jwt.auth')->group(function () {
 
@@ -24,10 +37,10 @@ Route::middleware('jwt.auth')->group(function () {
     Route::post('/auth/logout', [AuthController::class, 'logout']);
     Route::post('/auth/refresh', [AuthController::class, 'refresh']);
 
-    // Dashboard - semua role
+    // Dashboard bisa diakses oleh semua role yang sudah login
     Route::get('/dashboard', [DashboardController::class, 'index']);
 
-    // Manajemen Pelanggan - Owner, Kasir
+    // Manajemen Pelanggan -> hanya Owner & Kasir (lihat tabel akses laporan bagian 2)
     Route::middleware('role:owner,kasir')->prefix('customers')->group(function () {
         Route::get('/', [CustomerController::class, 'index']);
         Route::post('/', [CustomerController::class, 'store']);
@@ -37,7 +50,7 @@ Route::middleware('jwt.auth')->group(function () {
         Route::post('/{customer}/points', [CustomerController::class, 'addPoints']);
     });
 
-    // Transaksi & POS - Owner, Kasir
+    // Transaksi & POS -> Owner & Kasir
     Route::middleware('role:owner,kasir')->prefix('transactions')->group(function () {
         Route::get('/', [TransactionController::class, 'index']);
         Route::get('/products', [TransactionController::class, 'products']);
@@ -47,7 +60,7 @@ Route::middleware('jwt.auth')->group(function () {
         Route::delete('/{transaction}', [TransactionController::class, 'destroy']);
     });
 
-    // Manajemen Inventori - Owner, Admin
+    // Manajemen Inventori -> Owner & Admin
     Route::middleware('role:owner,admin')->prefix('inventory')->group(function () {
         Route::get('/', [InventoryController::class, 'index']);
         Route::post('/', [InventoryController::class, 'store']);
@@ -56,7 +69,7 @@ Route::middleware('jwt.auth')->group(function () {
         Route::delete('/{inventoryItem}', [InventoryController::class, 'destroy']);
     });
 
-    // Portal Kemitraan - Owner, Admin
+    // Portal Kemitraan -> Owner & Admin
     Route::middleware('role:owner,admin')->prefix('partnership')->group(function () {
         Route::get('/', [PartnershipController::class, 'index']);
         Route::get('/partners', [PartnershipController::class, 'partners']);
@@ -66,7 +79,7 @@ Route::middleware('jwt.auth')->group(function () {
         Route::post('/offers/{offer}/select', [PartnershipController::class, 'selectOffer']);
     });
 
-    // Purchase Orders - Owner, Admin
+    // Purchase Orders -> Owner & Admin
     Route::middleware('role:owner,admin')->prefix('purchase-orders')->group(function () {
         Route::get('/', [PurchaseOrderController::class, 'index']);
         Route::get('/{purchaseOrder}', [PurchaseOrderController::class, 'show']);
@@ -74,7 +87,7 @@ Route::middleware('jwt.auth')->group(function () {
         Route::post('/{purchaseOrder}/receive', [PurchaseOrderController::class, 'confirmReceipt']);
     });
 
-    // Laporan & Analitik - Owner saja
+    // Laporan & Analitik -> Owner saja (fitur eksklusif, sesuai laporan bagian 4.8)
     Route::middleware('role:owner')->prefix('reports')->group(function () {
         Route::get('/', [ReportController::class, 'index']);
     });

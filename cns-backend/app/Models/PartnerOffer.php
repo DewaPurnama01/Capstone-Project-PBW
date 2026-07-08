@@ -4,6 +4,9 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
+/**
+ * Model untuk tabel "partner_offers" (tawaran harga dari petani).
+ */
 class PartnerOffer extends Model
 {
     protected $fillable = ['restock_request_id', 'partner_id', 'price_per_unit', 'eta_days', 'status'];

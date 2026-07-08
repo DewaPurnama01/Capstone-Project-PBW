@@ -4,6 +4,9 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
+/**
+ * Model untuk tabel "partners" (petani kopi mitra, Portal Kemitraan).
+ */
 class Partner extends Model
 {
     protected $fillable = [

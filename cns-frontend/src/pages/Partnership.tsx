@@ -5,27 +5,40 @@ import type { RestockRequest, Partner, InventoryItem } from '../types';
 import Modal from '../components/Modal';
 import { formatRupiah } from '../lib/format';
 
+/**
+ * Halaman Portal Kemitraan (laporan 4.6). Menampilkan alur pengadaan biji
+ * kopi lewat tab: Alur Pengadaan (stepper), Petani Mitra (daftar performa),
+ * dan Riwayat Request (yang sudah selesai). Tombol "Siarkan", "Input
+ * Penawaran", dan "Pilih & Terbitkan PO" memanggil endpoint backend yang
+ * berbeda-beda sesuai tahap prosesnya (lihat PartnershipController).
+ */
+
 const TABS = ['Alur Pengadaan', 'Petani Mitra', 'Riwayat Request'];
 
 const STEPS = ['Deteksi Stok', 'Form Request', 'Broadcast', 'Penawaran', 'PO Terbit', 'Pengiriman', 'Quality Control', 'Selesai'];
 
 interface POSummary { id: number; code: string; reference_code: string | null; delivery_status: string; payment_status: string }
 
-/** Menentukan step (index 0-7) yang sedang aktif untuk sebuah request, berdasarkan
- * status request itu sendiri dan (jika sudah ada) status pengiriman PO terkait. */
+/**
+ * Menentukan tahap (0-7) mana yang sedang aktif untuk sebuah request,
+ * supaya ikon stepper di UI ikut berubah warna/isi sesuai kondisi saat ini
+ * (bukan selalu diam di tahap pertama). Aturannya sederhana: kalau sudah
+ * ada PO terkait, tahapnya ikut status PO; kalau belum, ikut status request.
+ */
 function getActiveStep(req: RestockRequest, relatedPO?: POSummary): number {
   if (relatedPO) {
-    if (relatedPO.delivery_status === 'selesai') return 7;
-    if (relatedPO.delivery_status === 'retur') return 6; // gagal QC, tetap tampil di tahap QC
-    if (relatedPO.delivery_status === 'dikirim' || relatedPO.delivery_status === 'diterima') return 5;
+    if (relatedPO.delivery_status === 'selesai') return 7; // Selesai
+    if (relatedPO.delivery_status === 'retur') return 6;   // gagal QC, tetap tampil di tahap QC
+    if (relatedPO.delivery_status === 'dikirim' || relatedPO.delivery_status === 'diterima') return 5; // Pengiriman
   }
+
   switch (req.status) {
-    case 'draft': return 1;
-    case 'disiarkan': return 2;
-    case 'ditawar': return 3;
-    case 'po_dibuat': return 4;
+    case 'draft': return 1;      // sudah dibuat, belum disiarkan
+    case 'disiarkan': return 2;  // sudah disiarkan ke petani
+    case 'ditawar': return 3;    // ada tawaran masuk
+    case 'po_dibuat': return 4;  // tawaran dipilih, PO terbit
     case 'selesai': return 7;
-    default: return 0;
+    default: return 0;           // draft baru dibuat = baru tahap "deteksi stok"
   }
 }
 

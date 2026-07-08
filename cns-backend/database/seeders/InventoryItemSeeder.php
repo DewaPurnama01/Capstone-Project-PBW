@@ -5,10 +5,12 @@ namespace Database\Seeders;
 use App\Models\InventoryItem;
 use Illuminate\Database\Seeder;
 
+/** Mengisi data stok bahan baku/kemasan/makanan untuk modul Inventori. */
 class InventoryItemSeeder extends Seeder
 {
     public function run(): void
     {
+        // [nama, kategori, satuan, stok saat ini, stok minimum, stok maksimum, harga/satuan, supplier, apakah biji kopi?]
         $items = [
             ['Biji Kopi', 'Bahan Baku', 'kg', 2.5, 5, 30, 150000, 'Portal Kemitraan', true],
             ['Susu Full Cream', 'Bahan Baku', 'liter', 3, 10, 40, 18000, 'Supplier Susu Segar', false],
@@ -31,6 +33,9 @@ class InventoryItemSeeder extends Seeder
                 'max_stock' => $max,
                 'unit_price' => $price,
                 'supplier_name' => $supplier,
+                // "Biji Kopi" sengaja diberi stok di bawah minimum (2.5 < 5) supaya
+                // saat aplikasi pertama kali dibuka, banner "Stok Kritis" langsung
+                // terlihat di Dashboard, Inventori, dan Portal Kemitraan.
                 'is_coffee_bean' => $isCoffee,
             ]);
         }

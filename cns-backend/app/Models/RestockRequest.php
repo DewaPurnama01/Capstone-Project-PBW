@@ -4,6 +4,9 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
+/**
+ * Model untuk tabel "restock_requests" (permintaan pengadaan biji kopi).
+ */
 class RestockRequest extends Model
 {
     protected $fillable = [
@@ -18,5 +21,7 @@ class RestockRequest extends Model
 
     public function inventoryItem() { return $this->belongsTo(InventoryItem::class); }
     public function creator() { return $this->belongsTo(User::class, 'created_by'); }
+
+    // satu permintaan bisa menerima banyak tawaran dari petani berbeda
     public function offers() { return $this->hasMany(PartnerOffer::class); }
 }

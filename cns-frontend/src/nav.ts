@@ -2,6 +2,13 @@ import {
   LayoutDashboard, Users, Receipt, Boxes, Handshake, ClipboardList, LineChart,
 } from 'lucide-react';
 
+/**
+ * Daftar menu sidebar dalam satu tempat (single source of truth).
+ * "roles" di tiap item menentukan role mana saja yang boleh mengakses
+ * menu tsb — dipakai bareng oleh Sidebar.tsx (untuk kunci menu) dan
+ * App.tsx (untuk kunci route). Kalau suatu saat mau menambah menu baru,
+ * cukup tambah satu baris di array ini.
+ */
 export interface NavItem {
   to: string;
   label: string;

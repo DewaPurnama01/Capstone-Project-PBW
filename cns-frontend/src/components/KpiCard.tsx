@@ -1,5 +1,11 @@
 import type { LucideIcon } from 'lucide-react';
 
+/**
+ * Satu kartu KPI (mis. "Pendapatan Hari Ini: Rp145.000") yang dipakai
+ * berulang di Dashboard & Transaksi. Menerima data lewat "props"
+ * (label, value, icon) — konsep dasar React: komponen bisa dipakai ulang
+ * dengan data yang berbeda-beda tiap kali dipanggil.
+ */
 export default function KpiCard({
   label, value, icon: Icon, tone = 'default',
 }: {

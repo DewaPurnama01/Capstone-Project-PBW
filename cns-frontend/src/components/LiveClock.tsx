@@ -2,7 +2,16 @@ import { useEffect, useState } from 'react';
 import { Clock } from 'lucide-react';
 
 /**
- * Menampilkan tanggal & jam saat ini, ter-update tiap detik (real-time).
+ * Menampilkan tanggal & jam saat ini, dan memperbaruinya tiap detik.
+ *
+ * Konsep yang dipakai: useEffect + setInterval. setInterval menjalankan
+ * kode di dalamnya berulang setiap 1000ms (1 detik). Setiap kali berjalan,
+ * setNow() dipanggil dengan waktu terbaru, yang otomatis membuat React
+ * menggambar ulang teks jam di layar (re-render).
+ *
+ * "return () => clearInterval(id)" adalah cleanup function: dijalankan
+ * saat komponen ini hilang dari layar (misalnya pindah halaman), supaya
+ * interval-nya dihentikan dan tidak terus berjalan di belakang layar (memory leak).
  */
 export default function LiveClock() {
   const [now, setNow] = useState(new Date());

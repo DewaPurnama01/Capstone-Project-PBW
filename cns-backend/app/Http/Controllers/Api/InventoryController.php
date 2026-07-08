@@ -7,8 +7,12 @@ use App\Models\InventoryItem;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 
+/**
+ * CRUD untuk modul Manajemen Inventori (laporan 4.5).
+ */
 class InventoryController extends Controller
 {
+    /** READ — daftar item, bisa difilter berdasarkan kategori & status stok */
     public function index(Request $request)
     {
         $query = InventoryItem::query();
@@ -17,33 +21,33 @@ class InventoryController extends Controller
             $query->where('category', $request->category);
         }
 
-        $items = $query->orderBy('name')->get()->map(function ($item) {
-            $item->stock_status = $item->stock_status;
-            $item->stock_percent = $item->stock_percent;
-            return $item;
-        });
+        // stock_status (kritis/rendah/aman) adalah accessor yang dihitung
+        // di model, bukan kolom asli -> makanya difilter di sisi PHP (setelah
+        // data diambil), bukan lewat query database.
+        $items = $query->orderBy('name')->get();
 
         if ($request->filled('status') && $request->status !== 'Semua') {
             $statusMap = ['Kritis' => 'kritis', 'Rendah' => 'rendah', 'Aman' => 'aman'];
             $target = $statusMap[$request->status] ?? null;
-            $items = $items->filter(fn ($i) => $i->stock_status === $target)->values();
+            $items = $items->filter(fn ($item) => $item->stock_status === $target)->values();
         }
 
-        $all = InventoryItem::get();
-        $critical = $all->filter(fn ($i) => $i->stock_status === 'kritis');
+        $all = InventoryItem::all();
+        $critical = $all->filter(fn ($item) => $item->stock_status === 'kritis');
 
         return response()->json([
             'data' => $items,
             'summary' => [
                 'total_items' => $all->count(),
                 'critical' => $critical->count(),
-                'low' => $all->filter(fn ($i) => $i->stock_status === 'rendah')->count(),
-                'total_value' => (float) $all->reduce(fn ($carry, $i) => $carry + ($i->current_stock * $i->unit_price), 0),
+                'low' => $all->filter(fn ($item) => $item->stock_status === 'rendah')->count(),
+                'total_value' => (float) $all->sum(fn ($item) => $item->current_stock * $item->unit_price),
             ],
             'critical_items' => $critical->values(),
         ]);
     }
 
+    /** CREATE */
     public function store(Request $request)
     {
         $validator = Validator::make($request->all(), [
@@ -67,6 +71,7 @@ class InventoryController extends Controller
         return response()->json(['message' => 'Item inventori berhasil ditambahkan.', 'data' => $item], 201);
     }
 
+    /** UPDATE */
     public function update(Request $request, InventoryItem $inventoryItem)
     {
         $inventoryItem->update($request->only([
@@ -77,7 +82,9 @@ class InventoryController extends Controller
     }
 
     /**
-     * Restock manual (non-kopi). Untuk biji kopi, arahkan ke Portal Kemitraan.
+     * Restock manual (tambah stok langsung). Khusus biji kopi TIDAK lewat
+     * endpoint ini — harus lewat alur Portal Kemitraan (lihat PartnershipController),
+     * sesuai laporan bagian 4.5.
      */
     public function restock(Request $request, InventoryItem $inventoryItem)
     {
@@ -94,6 +101,7 @@ class InventoryController extends Controller
         return response()->json(['message' => 'Stok berhasil ditambahkan.', 'data' => $inventoryItem->fresh()]);
     }
 
+    /** DELETE */
     public function destroy(InventoryItem $inventoryItem)
     {
         $inventoryItem->delete();

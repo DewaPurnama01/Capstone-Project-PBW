@@ -1,6 +1,11 @@
 import { Link } from 'react-router-dom';
 import { Lock } from 'lucide-react';
 
+/**
+ * Halaman "Akses Terkunci" (laporan 4.1): tujuan akhir ketika user mencoba
+ * memaksa membuka URL yang bukan haknya (lihat ProtectedRoute.tsx yang
+ * melakukan <Navigate to="/akses-terkunci" /> secara otomatis).
+ */
 export default function AccessLocked() {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-cream-50 text-center p-6">

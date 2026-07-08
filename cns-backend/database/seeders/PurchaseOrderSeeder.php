@@ -9,6 +9,11 @@ use App\Models\PurchaseOrderPayment;
 use App\Models\QualityControl;
 use Illuminate\Database\Seeder;
 
+/**
+ * Mengisi 2 contoh Purchase Order: satu yang masih "dikirim" (belum dibayar,
+ * belum diterima) dan satu yang sudah "selesai" (lunas + lulus QC), supaya
+ * modul Purchase Orders langsung punya contoh data di kedua kondisi tsb.
+ */
 class PurchaseOrderSeeder extends Seeder
 {
     public function run(): void

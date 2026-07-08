@@ -1,5 +1,18 @@
+/*
+  File CSS utama. @import "tailwindcss" memuat seluruh utility class
+  Tailwind (contoh: "flex", "px-4", "rounded-lg", "text-sm") yang lalu
+  dipakai langsung di className setiap komponen React (lihat file .tsx).
+  Ini kebalikan dari CSS tradisional yang menulis banyak class custom di
+  file terpisah — di sini styling ditulis langsung di markup (JSX).
+*/
 @import "tailwindcss";
 
+/*
+  @theme = tempat mendefinisikan variabel warna & font sendiri, sesuai
+  tema krem-hijau khas Cafe CNS (laporan bagian 2: "palet warna bernuansa
+  krem dan hijau"). Variabel ini otomatis bisa dipakai sebagai class,
+  contoh: bg-cafe-green-700, text-cream-100, dst.
+*/
 @theme {
   --color-cream-50: #FDFBF3;
   --color-cream-100: #FAF3E0;
@@ -13,6 +26,7 @@
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
 }
 
+/* CSS biasa (bukan Tailwind) juga tetap bisa ditulis langsung di sini */
 html, body, #root {
   height: 100%;
 }

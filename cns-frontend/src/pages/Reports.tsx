@@ -17,6 +17,12 @@ const RANGE_OPTIONS = [
   { label: '12 Bulan Terakhir', value: 12 },
 ];
 
+/**
+ * Halaman Laporan & Analitik (laporan 4.8), khusus role Owner. 4 tab
+ * (Keuangan/Produk/Pelanggan/Supplier) menampilkan data dari satu endpoint
+ * GET /api/reports. Dropdown rentang waktu memicu request ulang dengan
+ * parameter "months" yang berbeda (lihat useEffect dengan dependency [months]).
+ */
 export default function Reports() {
   const [data, setData] = useState<any>(null);
   const [tab, setTab] = useState(0);

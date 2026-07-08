@@ -11,8 +11,13 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 
+/**
+ * Modul Purchase Orders (laporan 4.7): melacak PO yang sudah terbit dari
+ * Portal Kemitraan, sampai pembayaran lunas & barang diterima.
+ */
 class PurchaseOrderController extends Controller
 {
+    /** READ — daftar PO, bisa difilter berdasarkan status pengiriman */
     public function index(Request $request)
     {
         $query = PurchaseOrder::with(['partner', 'inventoryItem', 'payments']);
@@ -33,7 +38,7 @@ class PurchaseOrderController extends Controller
                 'total' => PurchaseOrder::count(),
                 'dikirim' => PurchaseOrder::where('delivery_status', 'dikirim')->count(),
                 'belum_bayar_amount' => (float) PurchaseOrder::where('payment_status', '!=', 'lunas')->get()
-                    ->sum(fn ($po) => $po->remaining_amount),
+                    ->sum(fn ($po) => $po->remaining_amount), // remaining_amount = accessor di model
                 'selesai_bulan_ini' => PurchaseOrder::where('delivery_status', 'selesai')
                     ->whereMonth('updated_at', now()->month)->count(),
             ],
@@ -45,9 +50,7 @@ class PurchaseOrderController extends Controller
         return response()->json(['data' => $purchaseOrder->load('partner', 'inventoryItem', 'payments', 'qualityControl')]);
     }
 
-    /**
-     * Mencatat pembayaran pada PO yang belum lunas.
-     */
+    /** Mencatat satu pembayaran (PO boleh dicicil beberapa kali) */
     public function recordPayment(Request $request, PurchaseOrder $purchaseOrder)
     {
         $validator = Validator::make($request->all(), [
@@ -59,25 +62,27 @@ class PurchaseOrderController extends Controller
             return response()->json(['message' => 'Data pembayaran tidak valid.'], 422);
         }
 
-        DB::transaction(function () use ($request, $purchaseOrder) {
-            PurchaseOrderPayment::create([
-                'purchase_order_id' => $purchaseOrder->id,
-                'amount' => $request->amount,
-                'method' => $request->method,
-                'paid_at' => now(),
-            ]);
+        PurchaseOrderPayment::create([
+            'purchase_order_id' => $purchaseOrder->id,
+            'amount' => $request->amount,
+            'method' => $request->method,
+            'paid_at' => now(),
+        ]);
 
-            $paid = $purchaseOrder->payments()->sum('amount');
-            $purchaseOrder->update([
-                'payment_status' => $paid >= $purchaseOrder->total ? 'lunas' : 'sebagian',
-            ]);
-        });
+        // Cek total semua pembayaran dibanding total tagihan, untuk menentukan
+        // status pembayaran berikutnya: sudah lunas, atau baru sebagian.
+        $totalDibayar = $purchaseOrder->payments()->sum('amount');
+        $purchaseOrder->update([
+            'payment_status' => $totalDibayar >= $purchaseOrder->total ? 'lunas' : 'sebagian',
+        ]);
 
         return response()->json(['message' => 'Pembayaran dicatat.', 'data' => $purchaseOrder->fresh('payments')]);
     }
 
     /**
-     * Konfirmasi penerimaan barang + input hasil Quality Control.
+     * Konfirmasi penerimaan barang + input skor Quality Control.
+     * Skor >= 70 dianggap lulus: stok inventori otomatis bertambah dan
+     * PO ditandai selesai. Skor di bawah itu -> barang diretur.
      */
     public function confirmReceipt(Request $request, PurchaseOrder $purchaseOrder)
     {
@@ -90,41 +95,37 @@ class PurchaseOrderController extends Controller
             return response()->json(['message' => 'Data QC tidak valid.'], 422);
         }
 
-        $passed = $request->quality_score >= 70;
+        $lulus = $request->quality_score >= 70;
 
-        DB::transaction(function () use ($request, $purchaseOrder, $passed) {
-            QualityControl::create([
-                'purchase_order_id' => $purchaseOrder->id,
-                'quality_score' => $request->quality_score,
-                'passed' => $passed,
-                'notes' => $request->notes,
-                'checked_at' => now(),
-            ]);
+        QualityControl::create([
+            'purchase_order_id' => $purchaseOrder->id,
+            'quality_score' => $request->quality_score,
+            'passed' => $lulus,
+            'notes' => $request->notes,
+            'checked_at' => now(),
+        ]);
 
-            $purchaseOrder->update([
-                'delivery_status' => $passed ? 'qc_lulus' : 'retur',
-                'received_at' => now(),
-            ]);
+        if ($lulus) {
+            $this->selesaikanPurchaseOrder($purchaseOrder);
+        } else {
+            $purchaseOrder->update(['delivery_status' => 'retur', 'received_at' => now()]);
+        }
 
-            if ($passed) {
-                $purchaseOrder->inventoryItem->increment('current_stock', $purchaseOrder->qty);
-                $purchaseOrder->update(['delivery_status' => 'selesai']);
-
-                if ($purchaseOrder->reference_code) {
-                    RestockRequest::where('code', $purchaseOrder->reference_code)
-                        ->update(['status' => 'selesai']);
-                }
-            }
-
-            // Update metrik performa petani (rata-rata bergerak sederhana)
-            $partner = $purchaseOrder->partner;
-            $onTime = $purchaseOrder->received_at->lte($purchaseOrder->estimated_delivery?->endOfDay() ?? now());
-            $partner->update([
-                'quality_score' => round((($partner->quality_score ?? 0) + $request->quality_score) / 2, 2),
-                'on_time_rate' => round((($partner->on_time_rate ?? 0) + ($onTime ? 100 : 0)) / 2, 2),
-            ]);
-        });
+        // Skor kualitas petani di halaman "Petani Mitra" disamakan dengan
+        // skor QC terakhir ini (versi sederhana, cukup untuk demo laporan).
+        $purchaseOrder->partner->update(['quality_score' => $request->quality_score]);
 
         return response()->json(['message' => 'Penerimaan & QC dicatat.', 'data' => $purchaseOrder->fresh(['qualityControl', 'partner'])]);
+    }
+
+    // Menandai PO selesai: tambah stok inventori + tandai request asalnya selesai juga
+    private function selesaikanPurchaseOrder(PurchaseOrder $purchaseOrder): void
+    {
+        $purchaseOrder->update(['delivery_status' => 'selesai', 'received_at' => now()]);
+        $purchaseOrder->inventoryItem->increment('current_stock', $purchaseOrder->qty);
+
+        if ($purchaseOrder->reference_code) {
+            RestockRequest::where('code', $purchaseOrder->reference_code)->update(['status' => 'selesai']);
+        }
     }
 }

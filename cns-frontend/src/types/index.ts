@@ -1,3 +1,10 @@
+/**
+ * TypeScript "type" / "interface" = mendeskripsikan bentuk data supaya
+ * editor & compiler bisa mengecek kesalahan penulisan lebih awal (mis.
+ * salah ketik nama field, atau lupa isi field wajib) SEBELUM kode dijalankan.
+ * Semua bentuk data yang dipakai berulang di banyak halaman didefinisikan
+ * di sini, satu tempat, supaya konsisten.
+ */
 export type Role = 'owner' | 'admin' | 'kasir';
 
 export interface User {

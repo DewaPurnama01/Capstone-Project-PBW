@@ -9,6 +9,13 @@ import KpiCard from '../components/KpiCard';
 import { formatRupiah, formatDateTime } from '../lib/format';
 import { downloadCsv } from '../lib/csv';
 
+/**
+ * Halaman Transaksi & POS (laporan 4.4). Menggabungkan beberapa konsep:
+ * - CRUD (Create transaksi baru, Read daftar & detail, Delete)
+ * - Form dengan state keranjang belanja (object { productId: qty })
+ * - Grafik (BarChart trafik per jam) dari data yang dihitung backend
+ * - Export CSV (lihat src/lib/csv.ts)
+ */
 export default function Transactions() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [summary, setSummary] = useState<any>({});
@@ -38,16 +45,21 @@ export default function Transactions() {
   useEffect(() => { load(); }, [filter, search]);
   useEffect(() => { api.get('/transactions/products').then((res) => setProducts(res.data.data)); }, []);
 
+  // Total belanja dihitung ulang otomatis setiap kali "cart" berubah
+  // (reduce = menjumlahkan qty * harga untuk semua produk di keranjang)
   const total = products.reduce((sum, p) => sum + (cart[p.id] || 0) * p.price, 0);
 
+  // Menambah/mengurangi qty satu produk di keranjang. "cart" berbentuk
+  // object seperti { 3: 2, 7: 1 } artinya produk id=3 sebanyak 2, id=7 sebanyak 1.
   function updateQty(id: number, delta: number) {
     setCart((prev) => {
       const next = { ...prev, [id]: Math.max(0, (prev[id] || 0) + delta) };
-      if (next[id] === 0) delete next[id];
+      if (next[id] === 0) delete next[id]; // qty 0 -> hapus dari keranjang
       return next;
     });
   }
 
+  // CREATE transaksi baru: ubah object cart jadi array item, lalu kirim ke API
   async function handleSubmit() {
     const items = Object.entries(cart).map(([product_id, qty]) => ({ product_id: Number(product_id), qty }));
     if (items.length === 0) return;
@@ -58,6 +70,7 @@ export default function Transactions() {
     load();
   }
 
+  // DELETE satu transaksi
   async function handleDelete() {
     if (!deleteTarget) return;
     await api.delete(`/transactions/${deleteTarget.id}`);
@@ -65,6 +78,8 @@ export default function Transactions() {
     load();
   }
 
+  // Export: susun data transaksi yang sedang tampil jadi baris-baris CSV,
+  // lalu panggil helper downloadCsv() untuk memicu proses unduh di browser
   function handleExport() {
     const rows: (string | number)[][] = [
       ['ID Transaksi', 'Waktu', 'Pelanggan', 'Item', 'Total', 'Pembayaran', 'Status'],

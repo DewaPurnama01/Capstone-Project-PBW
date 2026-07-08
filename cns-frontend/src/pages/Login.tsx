@@ -3,6 +3,16 @@ import { useNavigate } from 'react-router-dom';
 import { Coffee, LogIn } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
+/**
+ * Halaman Login (laporan bagian 4.1 & 5.a).
+ * Konsep yang dipakai di file ini:
+ * - HTML lewat JSX (<form>, <input>, <button>, dst — mirip HTML biasa)
+ * - CSS lewat class Tailwind (mis. "rounded-lg", "bg-cafe-green-700")
+ * - JS/React: useState untuk data form, event handler (onSubmit, onChange)
+ * - Navigasi halaman (useNavigate) setelah login berhasil
+ */
+
+// Tombol pintasan supaya gampang dicoba tanpa perlu mengetik ulang tiap kali
 const DEMO_ACCOUNTS = [
   { role: 'Owner CNS', username: 'owner', password: 'owner2026' },
   { role: 'Dani Admin', username: 'admin', password: 'admin2026' },
@@ -10,6 +20,8 @@ const DEMO_ACCOUNTS = [
 ];
 
 export default function Login() {
+  // useState: menyimpan nilai input form. Tiap kali user mengetik,
+  // setUsername/setPassword dipanggil dan React menggambar ulang tampilannya.
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -17,13 +29,14 @@ export default function Login() {
   const { login } = useAuth();
   const navigate = useNavigate();
 
+  // Dipanggil saat form di-submit (tombol "Masuk" ditekan / tekan Enter)
   async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
+    e.preventDefault(); // mencegah browser reload halaman (perilaku default <form>)
     setError('');
     setLoading(true);
     try {
-      await login(username, password);
-      navigate('/dashboard');
+      await login(username, password); // panggil API lewat AuthContext
+      navigate('/dashboard'); // pindah halaman kalau berhasil
     } catch (err: any) {
       setError(err?.response?.data?.message || 'Login gagal. Periksa kembali kredensial kamu.');
     } finally {

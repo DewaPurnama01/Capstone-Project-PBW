@@ -9,6 +9,11 @@ import { downloadCsv } from '../lib/csv';
 
 const STATUSES = ['Semua', 'Dikirim', 'QC Lulus', 'Selesai', 'Retur'];
 
+/**
+ * Halaman Purchase Orders (laporan 4.7). Dua aksi utama per PO:
+ * "Catat Pembayaran" (bisa dicicil berkali-kali) dan "Konfirmasi Penerimaan"
+ * (input skor Quality Control saat barang tiba dari petani).
+ */
 export default function PurchaseOrders() {
   const [orders, setOrders] = useState<PurchaseOrder[]>([]);
   const [summary, setSummary] = useState<any>({});

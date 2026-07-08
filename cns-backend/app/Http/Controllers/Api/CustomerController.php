@@ -7,10 +7,20 @@ use App\Models\Customer;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 
+/**
+ * CRUD lengkap untuk modul Manajemen Pelanggan (laporan 4.3).
+ * CRUD = Create, Read, Update, Delete — 4 operasi dasar yang hampir
+ * selalu ada di setiap fitur berbasis data. Di REST API, 4 operasi ini
+ * biasanya dipetakan ke method HTTP:
+ *   Create -> POST     Read -> GET     Update -> PUT/PATCH     Delete -> DELETE
+ */
 class CustomerController extends Controller
 {
+    /** READ (banyak data) — GET /api/customers */
     public function index(Request $request)
     {
+        // Query builder: mulai dari "ambil semua pelanggan", lalu ditambah
+        // filter secara bertahap tergantung parameter yang dikirim frontend.
         $query = Customer::query();
 
         if ($request->filled('segment') && $request->segment !== 'Semua') {
@@ -18,11 +28,13 @@ class CustomerController extends Controller
         }
 
         if ($request->filled('search')) {
-            $s = $request->search;
-            $query->where(function ($q) use ($s) {
-                $q->where('name', 'like', "%{$s}%")
-                    ->orWhere('email', 'like', "%{$s}%")
-                    ->orWhere('phone', 'like', "%{$s}%");
+            $keyword = $request->search;
+            // where(function...) = mengelompokkan beberapa kondisi "OR" jadi satu,
+            // supaya tidak tercampur dengan filter "AND" segment di atas.
+            $query->where(function ($q) use ($keyword) {
+                $q->where('name', 'like', "%{$keyword}%")
+                    ->orWhere('email', 'like', "%{$keyword}%")
+                    ->orWhere('phone', 'like', "%{$keyword}%");
             });
         }
 
@@ -30,6 +42,7 @@ class CustomerController extends Controller
 
         return response()->json([
             'data' => $customers,
+            // ringkasan angka untuk kartu KPI di halaman Pelanggan
             'summary' => [
                 'total' => Customer::count(),
                 'vip' => Customer::where('segment', 'VIP')->count(),
@@ -40,8 +53,10 @@ class CustomerController extends Controller
         ]);
     }
 
+    /** CREATE — POST /api/customers */
     public function store(Request $request)
     {
+        // Validasi: pastikan data yang dikirim frontend sesuai aturan sebelum disimpan
         $validator = Validator::make($request->all(), [
             'name' => 'required|string|max:255',
             'phone' => 'nullable|string|max:30',
@@ -55,7 +70,7 @@ class CustomerController extends Controller
         }
 
         $customer = Customer::create([
-            ...$validator->validated(),
+            ...$validator->validated(), // spread operator: salin semua data yang sudah divalidasi
             'segment' => $request->segment ?? 'Baru',
             'joined_at' => now(),
         ]);
@@ -63,15 +78,21 @@ class CustomerController extends Controller
         return response()->json(['message' => 'Pelanggan berhasil ditambahkan.', 'data' => $customer], 201);
     }
 
+    /**
+     * READ (satu data) — GET /api/customers/{customer}
+     * Laravel otomatis mengubah {customer} di URL menjadi objek Customer
+     * lewat fitur "Route Model Binding" (ID di URL dicari otomatis ke database).
+     */
     public function show(Customer $customer)
     {
         return response()->json(['data' => $customer]);
     }
 
+    /** UPDATE — PUT /api/customers/{customer} */
     public function update(Request $request, Customer $customer)
     {
         $validator = Validator::make($request->all(), [
-            'name' => 'sometimes|required|string|max:255',
+            'name' => 'sometimes|required|string|max:255', // "sometimes" = boleh tidak dikirim saat update sebagian
             'phone' => 'nullable|string|max:30',
             'email' => 'nullable|email|max:255',
             'segment' => 'nullable|in:Baru,Reguler,Member,VIP',
@@ -88,6 +109,7 @@ class CustomerController extends Controller
         return response()->json(['message' => 'Pelanggan berhasil diperbarui.', 'data' => $customer]);
     }
 
+    /** DELETE — DELETE /api/customers/{customer} */
     public function destroy(Customer $customer)
     {
         $customer->delete();
@@ -96,7 +118,8 @@ class CustomerController extends Controller
     }
 
     /**
-     * Menambah poin loyalitas secara manual (owner/kasir).
+     * Endpoint tambahan di luar CRUD standar: menambah poin loyalitas
+     * secara manual (laporan 4.3 — "penambahan poin loyalitas secara manual").
      */
     public function addPoints(Request $request, Customer $customer)
     {
@@ -108,6 +131,8 @@ class CustomerController extends Controller
             return response()->json(['message' => 'Poin tidak valid.'], 422);
         }
 
+        // increment() = tambahkan angka ke kolom tertentu (lebih aman dari
+        // race condition dibanding ambil-nilai-lalu-simpan-ulang manual)
         $customer->increment('loyalty_points', $request->points);
 
         return response()->json(['message' => 'Poin loyalitas ditambahkan.', 'data' => $customer->fresh()]);

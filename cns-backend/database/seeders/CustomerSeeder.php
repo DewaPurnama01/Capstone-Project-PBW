@@ -5,10 +5,12 @@ namespace Database\Seeders;
 use App\Models\Customer;
 use Illuminate\Database\Seeder;
 
+/** Mengisi data pelanggan contoh untuk modul Manajemen Pelanggan. */
 class CustomerSeeder extends Seeder
 {
     public function run(): void
     {
+        // [nama, telepon, email, segmen, poin, menu favorit, jumlah kunjungan, total belanja, tanggal gabung]
         $customers = [
             ['Andi Wijaya', '0812-3456-7890', 'andi@email.com', 'VIP', 2850, 'Kopi Susu', 48, 2340000, '2025-01-15'],
             ['Siti Rahma', '0813-5678-9012', 'siti@email.com', 'Member', 1240, 'Matcha Latte', 24, 980000, '2025-03-02'],
@@ -31,7 +33,7 @@ class CustomerSeeder extends Seeder
                 'visit_count' => $visits,
                 'total_spent' => $spent,
                 'joined_at' => $joined,
-                'last_visit_at' => now()->subDays(rand(0, 5)),
+                'last_visit_at' => now()->subDays(rand(0, 5)), // kunjungan terakhir: 0-5 hari yang lalu
             ]);
         }
     }

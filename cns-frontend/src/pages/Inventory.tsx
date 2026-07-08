@@ -17,6 +17,12 @@ const STATUS_BAR: Record<string, string> = {
 
 const STATUS_LABEL: Record<string, string> = { kritis: 'Kritis', rendah: 'Rendah', aman: 'Aman' };
 
+/**
+ * Halaman Manajemen Inventori (laporan 4.5). CRUD item + aksi khusus
+ * "restock" (nambah stok tanpa mengubah data lain). Progress bar warna
+ * (STATUS_BAR) dan label (STATUS_LABEL) mengikuti stock_status yang
+ * sudah dihitung backend (lihat InventoryItem::getStockStatusAttribute).
+ */
 export default function Inventory() {
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [summary, setSummary] = useState<any>({});

@@ -5,10 +5,12 @@ namespace Database\Seeders;
 use App\Models\Partner;
 use Illuminate\Database\Seeder;
 
+/** Mengisi data petani kopi mitra untuk modul Portal Kemitraan. */
 class PartnerSeeder extends Seeder
 {
     public function run(): void
     {
+        // [nama, telepon, alamat, komoditas, % ketepatan waktu, skor kualitas, tanggal gabung]
         $partners = [
             ['Pak Iwan Kusuma', '0821-1111-2222', 'Wonosobo, Jawa Tengah', 'Biji Kopi Arabica', 96.5, 92, '2024-06-01'],
             ['Bu Sulastri', '0821-3333-4444', 'Kintamani, Bali', 'Biji Kopi Robusta', 88, 85, '2024-08-15'],

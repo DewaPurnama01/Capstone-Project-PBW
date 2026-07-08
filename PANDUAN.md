@@ -45,6 +45,12 @@ Login dengan salah satu akun demo (dibuat oleh seeder):
 ## Catatan penting
 - Kedua project sudah lulus pengecekan sintaks PHP (`php -l`) dan build
   TypeScript (`tsc -b` + `vite build`) di lingkungan ini.
+- **Revisi terbaru:** seluruh file (migration, model, middleware, controller,
+  routes, seeder di backend; context, komponen, halaman di frontend) sudah
+  diberi komentar penjelasan konsep dasar (HTML/JSX, CSS/Tailwind, JS/React
+  hooks, routing, CRUD, JWT, RBAC) dan sebagian logika disederhanakan supaya
+  lebih mudah dibaca dan dijelaskan — sesuai arahan bahwa tidak semua fitur
+  perlu berjalan sempurna, yang penting konsepnya sesuai laporan.
 - Karena sandbox tidak punya akses ke Packagist, `composer install` belum
   bisa dijalankan/diverifikasi di sini — jalankan di komputer/servermu yang
   terhubung internet.

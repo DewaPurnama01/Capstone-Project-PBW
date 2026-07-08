@@ -6,6 +6,13 @@ import Badge from '../components/Badge';
 import Modal from '../components/Modal';
 import { formatRupiah, formatDate } from '../lib/format';
 
+/**
+ * Halaman Manajemen Pelanggan (laporan 4.3) — contoh CRUD LENGKAP di sisi
+ * frontend: Create (form tambah), Read (tabel + detail), Update (form edit),
+ * Delete (hapus + konfirmasi). Pola yang sama dipakai lagi di halaman lain
+ * (Transaksi, Inventori, dst).
+ */
+
 const SEGMENTS = ['Semua', 'VIP', 'Member', 'Reguler', 'Baru'];
 
 type CustomerForm = { name: string; phone: string; email: string; segment: string; favorite_menu: string };
@@ -23,6 +30,8 @@ export default function Customers() {
   const [detail, setDetail] = useState<Customer | null>(null);
   const [form, setForm] = useState<CustomerForm>(EMPTY_FORM);
 
+  // READ: ambil daftar pelanggan dari API, otomatis terpanggil ulang
+  // (lihat useEffect di bawah) setiap kali filter segment/search berubah
   function load() {
     api.get('/customers', { params: { segment, search } }).then((res) => {
       setCustomers(res.data.data);
@@ -30,16 +39,21 @@ export default function Customers() {
     });
   }
 
+  // Dependency [segment, search]: effect ini otomatis berjalan ulang
+  // setiap kali nilai segment ATAU search berubah (misalnya user mengetik
+  // di kolom pencarian atau klik salah satu tombol filter segmen)
   useEffect(() => { load(); }, [segment, search]);
 
+  // CREATE: kirim data form ke API (POST), lalu tutup modal & muat ulang data
   async function handleAdd(e: React.FormEvent) {
-    e.preventDefault();
+    e.preventDefault(); // supaya browser tidak reload halaman
     await api.post('/customers', form);
     setShowAdd(false);
     setForm(EMPTY_FORM);
-    load();
+    load(); // refresh tabel supaya data baru langsung terlihat
   }
 
+  // Menyiapkan form edit: isi form dengan data pelanggan yang mau diedit
   function openEdit(c: Customer) {
     setEditTarget(c);
     setForm({
@@ -51,6 +65,7 @@ export default function Customers() {
     });
   }
 
+  // UPDATE: kirim data form yang sudah diubah ke API (PUT)
   async function handleEdit(e: React.FormEvent) {
     e.preventDefault();
     if (!editTarget) return;
@@ -60,6 +75,7 @@ export default function Customers() {
     load();
   }
 
+  // DELETE: hapus data lewat API setelah dikonfirmasi user di modal
   async function handleDelete() {
     if (!deleteTarget) return;
     await api.delete(`/customers/${deleteTarget.id}`);

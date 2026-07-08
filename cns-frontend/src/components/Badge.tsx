@@ -1,3 +1,8 @@
+/**
+ * Badge = label kecil berwarna untuk menampilkan status (VIP, selesai, kritis, dst).
+ * COLOR_MAP adalah objek "kamus": key = nama status, value = class warna Tailwind.
+ * Kalau status tidak ditemukan di kamus, dipakai warna abu-abu sebagai default.
+ */
 const COLOR_MAP: Record<string, string> = {
   VIP: 'bg-amber-100 text-amber-700',
   Member: 'bg-cafe-green-100 text-cafe-green-700',

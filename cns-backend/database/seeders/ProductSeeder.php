@@ -5,10 +5,12 @@ namespace Database\Seeders;
 use App\Models\Product;
 use Illuminate\Database\Seeder;
 
+/** Mengisi daftar menu kafe yang dipakai di modul Transaksi & POS. */
 class ProductSeeder extends Seeder
 {
     public function run(): void
     {
+        // Array 2 dimensi: tiap baris = [nama, kategori, harga jual, harga modal]
         $products = [
             ['Kopi Susu', 'Minuman', 30000, 12000],
             ['Americano', 'Minuman', 25000, 9000],
@@ -20,6 +22,7 @@ class ProductSeeder extends Seeder
             ['French Fries', 'Snack', 20000, 8000],
         ];
 
+        // list($a, $b, $c, $d) = ... membongkar satu baris array jadi 4 variabel sekaligus
         foreach ($products as [$name, $category, $price, $cost]) {
             Product::create([
                 'name' => $name,

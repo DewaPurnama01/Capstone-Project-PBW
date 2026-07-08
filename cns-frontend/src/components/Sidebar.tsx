@@ -3,15 +3,23 @@ import { Lock, Coffee, LogOut } from 'lucide-react';
 import { NAV_ITEMS } from '../nav';
 import { useAuth } from '../context/AuthContext';
 
+/**
+ * Sidebar = menu navigasi di sisi kiri (JSX/HTML) yang ditata dengan
+ * Tailwind (class CSS siap pakai, contoh: "flex", "px-3", "rounded-lg").
+ *
+ * Bagian penting sesuai laporan 4.1: menu yang berada di luar hak akses
+ * role user TETAP ditampilkan tapi dalam keadaan terkunci (ikon gembok,
+ * tidak bisa diklik) — bukan disembunyikan begitu saja.
+ */
 export default function Sidebar() {
   const { user, hasAccess, logout } = useAuth();
-  const navigate = useNavigate();
+  const navigate = useNavigate(); // untuk pindah halaman lewat kode (bukan klik link)
 
   if (!user) return null;
 
   function handleLogout() {
     logout();
-    navigate('/login');
+    navigate('/login'); // pindah halaman ke /login setelah logout
   }
 
   return (
@@ -27,10 +35,14 @@ export default function Sidebar() {
       </div>
 
       <nav className="flex-1 py-4 px-3 space-y-1 overflow-y-auto">
+        {/* .map() = "untuk setiap item di NAV_ITEMS, gambar satu baris menu".
+            Ini cara React menampilkan daftar (list) dari data array. */}
         {NAV_ITEMS.map((item) => {
-          const allowed = hasAccess(item.roles);
+          const allowed = hasAccess(item.roles); // cek RBAC: apakah role user ada di item.roles?
           const Icon = item.icon;
 
+          // Kalau TIDAK diizinkan: tampilkan sebagai <div> biasa (bukan link),
+          // diberi ikon gembok, dan tidak bisa diklik.
           if (!allowed) {
             return (
               <div
@@ -47,6 +59,8 @@ export default function Sidebar() {
             );
           }
 
+          // Kalau diizinkan: tampilkan sebagai <NavLink>, yaitu link yang otomatis
+          // tahu apakah sedang aktif (URL saat ini cocok) untuk diberi warna berbeda.
           return (
             <NavLink
               key={item.to}
@@ -83,3 +97,4 @@ export default function Sidebar() {
     </aside>
   );
 }
+

@@ -11,9 +11,16 @@ import Badge from '../components/Badge';
 import LiveClock from '../components/LiveClock';
 import { formatRupiah } from '../lib/format';
 
-const PIE_COLORS = ['#1B4D2E', '#2E7D4F', '#3F9963', '#F3E7C9'];
-const REFRESH_INTERVAL_MS = 30000;
+/**
+ * Halaman Dashboard (laporan bagian 4.2). Semua data (KPI, grafik, tabel)
+ * diambil dari satu endpoint backend: GET /api/dashboard — lalu ditampilkan
+ * lewat berbagai jenis chart dari library recharts.
+ */
 
+const PIE_COLORS = ['#1B4D2E', '#2E7D4F', '#3F9963', '#F3E7C9'];
+const REFRESH_INTERVAL_MS = 30000; // ambil data terbaru tiap 30 detik (real-time sederhana)
+
+// Bentuk data yang dikembalikan backend, supaya TypeScript bisa mengecek pemakaiannya
 interface DashboardData {
   kpi: { revenue_today: number; total_customers: number; transactions_today: number; low_stock_alerts: number };
   weekly_revenue: { label: string; revenue: number }[];
@@ -28,6 +35,7 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
+  // load() = fungsi READ sederhana: GET ke backend lalu simpan hasilnya ke state
   function load() {
     api.get('/dashboard').then((res) => {
       setData(res.data);
@@ -35,6 +43,10 @@ export default function Dashboard() {
     }).finally(() => setLoading(false));
   }
 
+  // useEffect(..., []) di sini melakukan 2 hal:
+  // 1. Panggil load() sekali saat halaman pertama kali dibuka
+  // 2. Pasang setInterval supaya load() dipanggil ulang tiap 30 detik,
+  //    sehingga data di layar mengikuti perubahan terbaru tanpa refresh manual
   useEffect(() => {
     load();
     const id = setInterval(load, REFRESH_INTERVAL_MS);
