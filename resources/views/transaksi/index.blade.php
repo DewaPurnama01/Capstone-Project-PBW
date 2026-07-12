@@ -1,0 +1,176 @@
+@extends('layouts.app')
+@section('title','Transaksi')
+@section('content')
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px;">
+    <div>
+        <h1 style="font-size:22px;font-weight:700;color:#0D530E;">Transaksi Penjualan</h1>
+        <p style="color:#5a6b57;font-size:14px;margin-top:2px;">Riwayat dan pencatatan transaksi kasir</p>
+    </div>
+    <a href="{{ route('transaksi.create') }}" class="btn-primary" style="text-decoration:none;">+ Transaksi Baru</a>
+</div>
+
+{{-- Stats --}}
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px;margin-bottom:24px;">
+    <div class="card" style="text-align:center;">
+        <div style="font-size:11px;color:#5a6b57;font-weight:600;text-transform:uppercase;margin-bottom:4px;">Pendapatan Hari Ini</div>
+        <div style="font-size:20px;font-weight:700;color:#0D530E;">Rp {{ number_format($stats['hari_ini'],0,',','.') }}</div>
+    </div>
+    <div class="card" style="text-align:center;">
+        <div style="font-size:11px;color:#5a6b57;font-weight:600;text-transform:uppercase;margin-bottom:4px;">Bulan Ini</div>
+        <div style="font-size:20px;font-weight:700;color:#0D530E;">Rp {{ number_format($stats['bulan_ini'],0,',','.') }}</div>
+    </div>
+    <div class="card" style="text-align:center;">
+        <div style="font-size:11px;color:#5a6b57;font-weight:600;text-transform:uppercase;margin-bottom:4px;">Transaksi Hari Ini</div>
+        <div style="font-size:20px;font-weight:700;color:#0D530E;">{{ $stats['count_hari_ini'] }}</div>
+    </div>
+    <div class="card" style="text-align:center;">
+        <div style="font-size:11px;color:#5a6b57;font-weight:600;text-transform:uppercase;margin-bottom:4px;">Rata-rata / Transaksi</div>
+        <div style="font-size:20px;font-weight:700;color:#0D530E;">Rp {{ number_format($stats['avg'],0,',','.') }}</div>
+    </div>
+    <div class="card" style="text-align:center;">
+        <div style="font-size:11px;color:#5a6b57;font-weight:600;text-transform:uppercase;margin-bottom:4px;">Sedang Diproses</div>
+        <div style="font-size:20px;font-weight:700;color:#b8860b;">{{ $stats['proses'] }}</div>
+    </div>
+</div>
+
+{{-- Filter --}}
+<div class="card" style="margin-bottom:20px;">
+    <form method="GET" style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
+        <input type="text" name="search" value="{{ request('search') }}" placeholder="Cari nama pelanggan..." class="form-input" style="width:200px;">
+        <input type="date" name="tanggal" value="{{ request('tanggal') }}" class="form-input" style="width:160px;">
+        <select name="status" class="form-input" style="width:150px;">
+            <option value="">Semua Status</option>
+            <option value="proses"   {{ request('status')==='proses'   ? 'selected' : '' }}>Proses</option>
+            <option value="selesai"  {{ request('status')==='selesai'  ? 'selected' : '' }}>Selesai</option>
+            <option value="batal"    {{ request('status')==='batal'    ? 'selected' : '' }}>Batal</option>
+        </select>
+        <button type="submit" class="btn-primary">Filter</button>
+        @if(request()->anyFilled(['search','tanggal','status']))
+        <a href="{{ route('transaksi.index') }}" class="btn-secondary" style="text-decoration:none;">Reset</a>
+        @endif
+    </form>
+</div>
+
+{{-- Table --}}
+<div class="card" style="overflow:hidden;padding:0;">
+    <div style="overflow-x:auto;">
+        <table style="width:100%;border-collapse:collapse;">
+            <thead>
+                <tr style="background:#FBF5DD;border-bottom:2px solid #E7E1B1;">
+                    <th style="text-align:left;padding:14px 16px;font-size:12px;font-weight:700;color:#5a6b57;text-transform:uppercase;">#</th>
+                    <th style="text-align:left;padding:14px 16px;font-size:12px;font-weight:700;color:#5a6b57;text-transform:uppercase;">Tanggal & Waktu</th>
+                    <th style="text-align:left;padding:14px 16px;font-size:12px;font-weight:700;color:#5a6b57;text-transform:uppercase;">Pelanggan</th>
+                    <th style="text-align:center;padding:14px 16px;font-size:12px;font-weight:700;color:#5a6b57;text-transform:uppercase;">Metode</th>
+                    <th style="text-align:center;padding:14px 16px;font-size:12px;font-weight:700;color:#5a6b57;text-transform:uppercase;">Status</th>
+                    <th style="text-align:right;padding:14px 16px;font-size:12px;font-weight:700;color:#5a6b57;text-transform:uppercase;">Total</th>
+                    <th style="text-align:center;padding:14px 16px;font-size:12px;font-weight:700;color:#5a6b57;text-transform:uppercase;">Aksi</th>
+                </tr>
+            </thead>
+            <tbody>
+                @forelse($transaksi as $t)
+                <tr class="table-row" style="border-bottom:1px solid #f0ede0;">
+                    {{-- ID --}}
+                    <td style="padding:13px 16px;font-size:12px;color:#888;font-family:monospace;">#{{ $t->id }}</td>
+
+                    {{-- Tanggal — pakai created_at --}}
+                    <td style="padding:13px 16px;font-size:13px;color:#5a6b57;">
+                        {{ \Carbon\Carbon::parse($t->created_at)->format('d M Y') }}<br>
+                        <span style="font-size:12px;">{{ \Carbon\Carbon::parse($t->created_at)->format('H:i') }}</span>
+                    </td>
+
+                    {{-- Pelanggan — pakai kolom nama (bukan relasi ORM) --}}
+                    <td style="padding:13px 16px;font-size:14px;">
+                        @if($t->nama && $t->nama !== 'Walk-in')
+                            <span style="font-weight:600;color:#1a2e18;">{{ $t->nama }}</span>
+                        @else
+                            <span style="color:#9ca3af;">Walk-in</span>
+                        @endif
+                        @if($t->kasir)
+                        <br><span style="font-size:11px;color:#9ca3af;">Kasir: {{ $t->kasir }}</span>
+                        @endif
+                    </td>
+
+                    {{-- Metode bayar — DB menyimpan Tunai/QRIS/Transfer --}}
+                    <td style="padding:13px 16px;text-align:center;">
+                        @php
+                            $mc  = ['Tunai'=>'#0D530E','QRIS'=>'#1a6da6','Transfer'=>'#7b3fbe'];
+                            $bgm = ['Tunai'=>'#e8f5e8','QRIS'=>'#e8f0fc','Transfer'=>'#f3e8ff'];
+                        @endphp
+                        <span style="background:{{ $bgm[$t->metode_bayar]??'#f5f5f5' }};color:{{ $mc[$t->metode_bayar]??'#888' }};padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600;">
+                            {{ $t->metode_bayar }}
+                        </span>
+                    </td>
+
+                    {{-- Status --}}
+                    <td style="padding:13px 16px;text-align:center;">
+                        @php
+                            $sc  = ['selesai'=>'#306D29','proses'=>'#b8860b','batal'=>'#d4183d'];
+                            $sbg = ['selesai'=>'#d4e8d0','proses'=>'#fff3cd','batal'=>'#fdecea'];
+                        @endphp
+                        <span style="background:{{ $sbg[$t->status]??'#f5f5f5' }};color:{{ $sc[$t->status]??'#888' }};padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600;">
+                            {{ ucfirst($t->status) }}
+                        </span>
+                    </td>
+
+                    {{-- Total — pakai kolom total --}}
+                    <td style="padding:13px 16px;text-align:right;font-weight:700;font-size:14px;color:#0D530E;">
+                        Rp {{ number_format($t->total,0,',','.') }}
+                    </td>
+
+                    {{-- Aksi --}}
+                    <td style="padding:13px 16px;text-align:center;">
+                        <div style="display:flex;gap:6px;justify-content:center;flex-wrap:wrap;">
+                            <a href="{{ route('transaksi.show', $t->id) }}"
+                               style="padding:5px 12px;background:#e8f5e8;color:#0D530E;border-radius:6px;font-size:12px;font-weight:600;text-decoration:none;border:1px solid #b8dbb8;">
+                                Detail
+                            </a>
+                            @if($t->status === 'proses')
+                            <a href="{{ route('transaksi.edit', $t->id) }}"
+                               style="padding:5px 12px;background:#e8f0fc;color:#1a6da6;border-radius:6px;font-size:12px;font-weight:600;text-decoration:none;border:1px solid #a8d4f5;">
+                                Edit
+                            </a>
+                            <form method="POST" action="{{ route('transaksi.update-status', $t->id) }}" style="margin:0;">
+                                @csrf @method('PUT')
+                                <input type="hidden" name="status" value="selesai">
+                                <button type="submit"
+                                    style="padding:5px 12px;background:#d4e8d0;color:#306D29;border-radius:6px;font-size:12px;font-weight:600;border:1px solid #a8d4a0;cursor:pointer;"
+                                    onclick="return confirm('Selesaikan transaksi ini? Stok bahan akan dikurangi otomatis.')">
+                                    ✓ Selesai
+                                </button>
+                            </form>
+                            <form method="POST" action="{{ route('transaksi.destroy', $t->id) }}" style="margin:0;" onsubmit="return confirm('Hapus transaksi ini?');">
+                                @csrf @method('DELETE')
+                                <button type="submit"
+                                    style="padding:5px 12px;background:#fdecea;color:#d4183d;border-radius:6px;font-size:12px;font-weight:600;border:1px solid #f5b7ae;cursor:pointer;">
+                                    🗑️
+                                </button>
+                            </form>
+                            @else
+                            <form method="POST" action="{{ route('transaksi.destroy', $t->id) }}" style="margin:0;" onsubmit="return confirm('Hapus transaksi ini?');">
+                                @csrf @method('DELETE')
+                                <button type="submit"
+                                    style="padding:5px 12px;background:#fdecea;color:#d4183d;border-radius:6px;font-size:12px;font-weight:600;border:1px solid #f5b7ae;cursor:pointer;">
+                                    🗑️ Hapus
+                                </button>
+                            </form>
+                            @endif
+                        </div>
+                    </td>
+                </tr>
+                @empty
+                <tr>
+                    <td colspan="7" style="padding:48px;text-align:center;color:#888;">
+                        <div style="font-size:36px;margin-bottom:8px;">🧾</div>
+                        <div style="font-weight:600;">Belum ada transaksi</div>
+                        <div style="font-size:13px;margin-top:4px;">Mulai buat transaksi baru</div>
+                    </td>
+                </tr>
+                @endforelse
+            </tbody>
+        </table>
+    </div>
+    @if($transaksi->hasPages())
+    <div style="padding:16px;border-top:1px solid #E7E1B1;">{{ $transaksi->appends(request()->query())->links() }}</div>
+    @endif
+</div>
+@endsection
